@@ -278,17 +278,4 @@ M.parse = function(input, config)
 	return parser:statements()
 end
 
--- Testing
--- local config = {preprocess = true}
--- local input = "int<4> some_int"
--- local t = lexer.lex(input, config)
--- -- Add EOF token for dispatcher
--- t[#t+1] = {token_type="EOF", value="eof"}
--- local parser = Parser(t)
--- parser:advance()
--- local expr = parser:expression()
--- local utils = require("snabbp4.syntax.utils.debug")
--- utils.print_r(expr)
-
 return M
-
