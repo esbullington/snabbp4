@@ -1,4 +1,4 @@
-local utils = require"snabbp4.syntax.utils"
+local utils = require"snabbp4.syntax.utils.debug"
 
 insulate("Parser declaration ('parser' keyword)", function()
 	local parser = require("snabbp4.syntax.parser")

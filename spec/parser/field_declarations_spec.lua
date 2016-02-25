@@ -1,4 +1,4 @@
-local utils = require("snabbp4.syntax.utils")
+local utils = require("snabbp4.syntax.utils.debug")
 
 insulate("Field list declaration", function()
 	local parser = require("snabbp4.syntax.parser")

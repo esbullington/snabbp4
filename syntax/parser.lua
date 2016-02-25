@@ -1,6 +1,6 @@
 local lexer      = require("snabbp4.syntax.lexer")
-local utils      = require("snabbp4.syntax.utils")
-local class      = require("snabbp4.syntax.middleclass")
+local utils      = require("snabbp4.syntax.utils.debug")
+local class      = require("snabbp4.syntax.utils.middleclass")
 local symbols    = require("snabbp4.syntax.symbols")
 local assertions = require("snabbp4.syntax.assertions")
 -- precedence values
@@ -287,7 +287,7 @@ end
 -- local parser = Parser(t)
 -- parser:advance()
 -- local expr = parser:expression()
--- local utils = require("snabbp4.syntax.utils")
+-- local utils = require("snabbp4.syntax.utils.debug")
 -- utils.print_r(expr)
 
 return M

@@ -1,4 +1,4 @@
-local utils = require("snabbp4.syntax.utils")
+local utils = require("snabbp4.syntax.utils.debug")
 local parser = require("snabbp4.syntax.parser")
 local symbols = require("snabbp4.syntax.symbols")
 

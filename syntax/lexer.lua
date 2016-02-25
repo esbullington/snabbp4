@@ -3,9 +3,9 @@
 -- Inspired by ANSI C lexer by David Manura, 2007, public domain.
 
 local lpeg = require("lpeg")
--- lcpp for preprocessing
-local lcpp = require("snabbp4.syntax.lcpp");
-local utils = require("snabbp4.syntax.utils")
+-- preprocessor for preprocessing
+local preprocessor = require("snabbp4.syntax.preprocessor");
+local utils = require("snabbp4.syntax.utils.debug")
 local P, R, S, C, Ct =
   lpeg.P, lpeg.R, lpeg.S, lpeg.C, lpeg.Ct
 
@@ -227,7 +227,7 @@ end
 
 M.lex = function(input, config)
 	if config.preprocess then
-		input = lcpp.compile(input)
+		input = preprocessor.compile(input)
 	end
 	local lines = get_lines(input)
 	-- Various PEG building blocks

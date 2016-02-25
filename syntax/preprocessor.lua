@@ -1,11 +1,11 @@
 ----------------------------------------------------------------------------
---## lcpp - a C-PreProcessor for Lua 5.1 and LuaJIT ffi integration
+--## preprocessor - a C-PreProcessor for Lua 5.1 and LuaJIT ffi integration
 -- 
 -- Copyright (C) 2012-2014 Michael Schmoock <michael@schmoock.net>
 --
 --### Links
--- * GitHub page:   [http://github.com/willsteel/lcpp](http://github.com/willsteel/lcpp)
--- * Project page:  [http://lcpp.schmoock.net](http://lcpp.schmoock.net)
+-- * GitHub page:   [http://github.com/willsteel/preprocessor](http://github.com/willsteel/preprocessor)
+-- * Project page:  [http://preprocessor.schmoock.net](http://preprocessor.schmoock.net)
 -- * Lua:           [http://www.lua.org](http://www.lua.org)
 -- * LuaJIT:        [http://luajit.org](http://luajit.org)
 -- * Sponsored by:  [http://mmbbq.org](http://mmbbq.org)
@@ -13,23 +13,23 @@
 -- It can be used to pre-process LuaJIT ffi C header file input. 
 -- It can also be used to preprocess any other code (i.e. Lua itself)
 --
--- 	git clone https://github.com/willsteel/lcpp.git
+-- 	git clone https://github.com/willsteel/preprocessor.git
 ----------------------------------------------------------------------------
 --## USAGE
---	-- load lcpp
---	local lcpp = require("lcpp")
+--	-- load preprocessor
+--	local preprocessor = require("preprocessor")
 --
---	-- use LuaJIT ffi and lcpp to parse cpp code
+--	-- use LuaJIT ffi and preprocessor to parse cpp code
 --	local ffi = require("ffi")
 --	ffi.cdef("#include <your_header.h>")
 --
---	-- use lcpp manually but add some predefines
---	local lcpp = require("lcpp"); 
---	local out = lcpp.compileFile("your_header.h", {UNICODE=1}); 
+--	-- use preprocessor manually but add some predefines
+--	local preprocessor = require("preprocessor"); 
+--	local out = preprocessor.compileFile("your_header.h", {UNICODE=1}); 
 --	print(out);
 --
 --	-- compile some input manually
---	local out = lcpp.compile([[
+--	local out = preprocessor.compile([[
 --		#include "myheader.h"
 --		#define MAXPATH 260
 --		typedef struct somestruct_t {
@@ -48,11 +48,11 @@
 --		} t_exe;
 --	]]
 --
---	-- access lcpp defines dynamically (i.e. if used with ffi)
+--	-- access preprocessor defines dynamically (i.e. if used with ffi)
 --	local ffi = require("ffi")
---	local lcpp = require("lcpp")
+--	local preprocessor = require("preprocessor")
 --	ffi.cdef("#include <your_header.h>")
---	=ffi.lcpp_defs.YOUR_DEFINE
+--	=ffi.preprocessor_defs.YOUR_DEFINE
 --
 --
 --## This CPPs BNF:
@@ -75,7 +75,7 @@
 --	DIRECTIVE_CONTENT := ".*?"
 --
 --## TODOs:
---	- lcpp.LCPP_LUA for: load, loadfile
+--	- preprocessor.LCPP_LUA for: load, loadfile
 --
 --## License (MIT)
 -- -----------------------------------------------------------------------------
@@ -100,8 +100,8 @@
 -- MIT license: http://www.opensource.org/licenses/mit-license.php
 -- -----------------------------------------------------------------------------
 --
--- @module lcpp
-local lcpp = {}
+-- @module preprocessor
+local preprocessor = {}
 -- check bit is avail or not
 local ok, bit = pcall(require, 'bit')
 if not ok then
@@ -150,12 +150,12 @@ bit = {
 end
 
 -- CONFIG
-lcpp.LCPP_LUA         = false   -- whether to use lcpp to preprocess Lua code (load, loadfile, loadstring...)
-lcpp.LCPP_FFI         = true    -- whether to use lcpp as LuaJIT ffi PreProcessor (if used in luaJIT)
-lcpp.LCPP_TEST        = false   -- whether to run lcpp unit tests when loading lcpp module
-lcpp.ENV              = {}      -- static predefines (env-like)
-lcpp.FAST             = false   -- perf. tweaks when enabled. con: breaks minor stuff like __LINE__ macros
-lcpp.DEBUG            = false
+preprocessor.LCPP_LUA         = false   -- whether to use preprocessor to preprocess Lua code (load, loadfile, loadstring...)
+preprocessor.LCPP_FFI         = true    -- whether to use preprocessor as LuaJIT ffi PreProcessor (if used in luaJIT)
+preprocessor.LCPP_TEST        = false   -- whether to run preprocessor unit tests when loading preprocessor module
+preprocessor.ENV              = {}      -- static predefines (env-like)
+preprocessor.FAST             = false   -- perf. tweaks when enabled. con: breaks minor stuff like __LINE__ macros
+preprocessor.DEBUG            = false
 
 -- PREDEFINES
 local __FILE__        = "__FILE__"
@@ -228,9 +228,9 @@ local FUNCMACRO = STARTL.."("..IDENTIFIER..")%(([_%s%w,]*)%)%s*(.*)"
 -- ------------
 -- LOCAL UTILS
 -- ------------
-lcpp.STATE = {lineno = 0} -- current state for debugging the last operation
-local function error(msg) _G.print(debug.traceback()); _G.error(string.format("lcpp ERR [%04i] %s", lcpp.STATE.lineno, msg)) end
-local function print(msg) _G.print(string.format("lcpp INF [%04i] %s", lcpp.STATE.lineno, msg)) end
+preprocessor.STATE = {lineno = 0} -- current state for debugging the last operation
+local function error(msg) _G.print(debug.traceback()); _G.error(string.format("preprocessor ERR [%04i] %s", preprocessor.STATE.lineno, msg)) end
+local function print(msg) _G.print(string.format("preprocessor INF [%04i] %s", preprocessor.STATE.lineno, msg)) end
 
 -- splits a string using a pattern into a table of substrings
 local function gsplit(str, pat)
@@ -502,13 +502,13 @@ local function screener(input)
 					end
 					coroutine.yield(line) 
 				else
-					if lcpp.FAST then
+					if preprocessor.FAST then
 						table.insert(buffer, line) 
 					else
 						coroutine.yield(line) 
 					end
 				end
-			elseif not lcpp.FAST then
+			elseif not preprocessor.FAST then
 				coroutine.yield(line) 
 			end
 		end
@@ -589,7 +589,7 @@ local function apply(state, input)
 	return concatStringLiteral(input),false
 end
 
--- processes an input line. called from lcpp doWork loop
+-- processes an input line. called from preprocessor doWork loop
 local function processLine(state, line)
 	if not line or #line == 0 then return line end
 	local cmd = nil 
@@ -730,8 +730,8 @@ local function doWork(state)
 			local input = state:getLine()
 			if not input then break end
 			local output = processLine(state, input)
-			if not lcpp.FAST and not output then output = "" end -- output empty skipped lines
-			if lcpp.DEBUG then output = output.." -- "..input end -- input as comment when DEBUG
+			if not preprocessor.FAST and not output then output = "" end -- output empty skipped lines
+			if preprocessor.DEBUG then output = output.." -- "..input end -- input as comment when DEBUG
 			if output then coroutine.yield(output) end
 		end
 		if (oldIndent ~= state:getIndent()) then error("indentation level must be balanced within a file. was:"..oldIndent.." is:"..state:getIndent()) end
@@ -740,7 +740,7 @@ local function doWork(state)
 end
 
 local function includeFile(state, filename, next, _local)
-	local result, result_state = lcpp.compileFile(filename, state.defines, state.macro_sources, next, _local)
+	local result, result_state = preprocessor.compileFile(filename, state.defines, state.macro_sources, next, _local)
 	-- now, we take the define table of the sub file for further processing
 	state.defines = result_state.defines
 	-- and return the compiled result	
@@ -1278,8 +1278,8 @@ end
 -- LCPP INTERFACE
 -- ------------
 
---- initialies a lcpp state. not needed manually. handy for testing
-function lcpp.init(input, predefines, macro_sources)
+--- initialies a preprocessor state. not needed manually. handy for testing
+function preprocessor.init(input, predefines, macro_sources)
 	-- create sate var
 	local state     = {}              -- init the state object
 	state.defines   = {}              -- the table of known defines and replacements
@@ -1344,10 +1344,10 @@ function lcpp.init(input, predefines, macro_sources)
 	state:define(__LINE__, state.lineno, true)
 	state:define(__LCPP_INDENT__, state:getIndent(), true)
 	predefines = predefines or {}
-	for k,v in pairs(lcpp.ENV) do	state:define(k, v, true) end	-- static ones
+	for k,v in pairs(preprocessor.ENV) do	state:define(k, v, true) end	-- static ones
 	for k,v in pairs(predefines) do	state:define(k, v, true) end
 	
-	if lcpp.LCPP_TEST then lcpp.STATE = state end -- activate static state debugging
+	if preprocessor.LCPP_TEST then preprocessor.STATE = state end -- activate static state debugging
 
 	return state
 end
@@ -1356,24 +1356,24 @@ end
 -- returns the preprocessed output as a string.
 -- @param code data as string
 -- @param predefines OPTIONAL a table of predefined variables
--- @usage lcpp.compile("#define bar 0x1337\nstatic const int foo = bar;")
--- @usage lcpp.compile("#define bar 0x1337\nstatic const int foo = bar;", {["bar"] = "0x1338"})
-function lcpp.compile(code, predefines, macro_sources)
-	local state = lcpp.init(code, predefines, macro_sources)
+-- @usage preprocessor.compile("#define bar 0x1337\nstatic const int foo = bar;")
+-- @usage preprocessor.compile("#define bar 0x1337\nstatic const int foo = bar;", {["bar"] = "0x1338"})
+function preprocessor.compile(code, predefines, macro_sources)
+	local state = preprocessor.init(code, predefines, macro_sources)
 	local buf = {}
 	for output in state:doWork() do
 		table.insert(buf, output)
 	end
 	local output = table.concat(buf, NEWL)
-	if lcpp.DEBUG then print(output) end
+	if preprocessor.DEBUG then print(output) end
 	return output, state
 end
 
 --- preprocesses a file
 -- @param filename the file to read
 -- @param predefines OPTIONAL a table of predefined variables
--- @usage out, state = lcpp.compileFile("../odbg/plugin.h", {["MAX_PAH"]=260, ["UNICODE"]=true})
-function lcpp.compileFile(filename, predefines, macro_sources, next, _local)
+-- @usage out, state = preprocessor.compileFile("../odbg/plugin.h", {["MAX_PAH"]=260, ["UNICODE"]=true})
+function preprocessor.compileFile(filename, predefines, macro_sources, next, _local)
 	if not filename then error("processFile() arg1 has to be a string") end
 	local file = io.open(filename, 'r')
 	if not file then error("file not found: "..filename) end
@@ -1381,30 +1381,30 @@ function lcpp.compileFile(filename, predefines, macro_sources, next, _local)
 	code.write("--EOF")
 	predefines = predefines or {}
 	predefines[__FILE__] = filename
-	return lcpp.compile(code, predefines, macro_sources)
+	return preprocessor.compile(code, predefines, macro_sources)
 end
 
 
 -- ------------
 -- SATIC UNIT TESTS
 -- ------------
-function lcpp.test(suppressMsg)
+function preprocessor.test(suppressMsg)
 	local testLabelCount = 0
 	local function getTestLabel()
 		testLabelCount = testLabelCount + 1
-		return " lcpp_assert_"..testLabelCount
+		return " preprocessor_assert_"..testLabelCount
 	end
 
 	-- this ugly global is required so our testcode can find it
-	_G.lcpp_test = {
+	_G.preprocessor_test = {
 		assertTrueCalls = 0;
 		assertTrueCount = 0;
 		assertTrue = function()
-			lcpp_test.assertTrueCount = lcpp_test.assertTrueCount + 1;
+			preprocessor_test.assertTrueCount = preprocessor_test.assertTrueCount + 1;
 		end
 	}
 
-	local testlcpp = [[
+	local testpreprocessor = [[
 		assert(__LINE__ == 1, "_LINE_ macro test 1: __LINE__")
 		// This test uses LCPP with lua code (uncommon but possible)
 		assert(__LINE__ == 3, "_LINE_ macro test 3: __LINE__")
@@ -1461,7 +1461,7 @@ function lcpp.test(suppressMsg)
 		assert __P((BINARY == -9, "parse, binary literal fails"))
 		assert(OCTET == 61 and NON_OCTET == 75, "parse octet literal fails")
 	
-		lcpp_test.assertTrue()
+		preprocessor_test.assertTrue()
 		assert(LEET == 0x1337, "simple #define replacement")
 		local msg
 		/* function to check macro expand to empty */
@@ -1480,37 +1480,37 @@ function lcpp.test(suppressMsg)
 
 		msg = "tenary operator test"
 		#if (HEX % 2 == 1 ? CUINT : CULONG) == 123456
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."1")
 		#endif
 		#if (OCTET % 2 == 0 ? CUINT : CULONG) == 123456
 			assert(false, msg.."1")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 
 
 
 
 		# if defined TRUE 
-			lcpp_test.assertTrue() -- valid strange syntax test (spaces and missing brackets)
+			preprocessor_test.assertTrue() -- valid strange syntax test (spaces and missing brackets)
 		# endif
 
 
 		msg = "#define if/else test"
 		#ifdef TRUE
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."1")
 		#endif
 		#ifdef NOTDEFINED
 			assert(false, msg.."2")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 		#ifndef NOTDEFINED
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."3")
 		#endif
@@ -1518,7 +1518,7 @@ function lcpp.test(suppressMsg)
 
 		msg = "#if defined statement test"
 		#if defined(TRUE)
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."1")
 		#endif
@@ -1526,14 +1526,14 @@ function lcpp.test(suppressMsg)
 			assert(false, msg.."2")
 		#endif
 		#if !defined(NOTLEET) && !defined(NOTDEFINED)
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."3")
 		#endif
 		#if !(defined(LEET) && defined(TRUE))
 			assert(false, msg.."4")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 		#if !defined(LEET) && !defined(TRUE)
 			assert(false, msg.."5")
@@ -1542,78 +1542,78 @@ function lcpp.test(suppressMsg)
 			assert(false, msg.."6")
 		#endif
 		#if ONE + TWO * TWO == 5
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."7")
 		#endif
 		#if (ONE + TWO) * TWO == 0x6
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."8")
 		#endif
 		#if ONE * TWO + ONE / TWO == 2.5
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."9")
 		#endif
 		#if ONE + ONE * TWO / TWO == 2
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."10")
 		#endif
 		#if TWO - - TWO == 4
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."11")
 		#endif
 		#if (TWO - - TWO) % (ONE + TWO) == 1
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."12")
 		#endif
 		#if ONE << TWO + TWO >> ONE == 8
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."13")
 		#endif
 		#if (ONE << TWO) + (TWO >> ONE) == 5
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."14")
 		#endif
 		#if (ONE << TWO) + TWO >> ONE == 3
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."15")
 		#endif
 		#if (THREE_FUNC(0xfffffU) & 4) == 0
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."16")
 		#endif
 		#if (0x3 & THREE_FUNC("foobar")) == 0b11
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."17")
 		#endif
 		#if defined(TWO) && ((TWO-0) < 3)
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."17")
 		#endif
 		#if TWO == 1--1 
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."18")
 		#endif
 		#if HEX > 0xfFfFU 
 			assert(false, msg.."18")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 		#define TRUE_DEFINED defined(TRUE)
 		#if TRUE_DEFINED
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."19")
 		#endif
@@ -1621,22 +1621,22 @@ function lcpp.test(suppressMsg)
 		#if NOTDEFINED_DEFINED
 			assert(false, msg.."20")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 		#if LEET && LEET > 0x1336
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."20")
 		#endif
 		#if NOTLEET && NOTLEET > 0x1336
 			assert(false, msg.."21")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 		#if defined(NOTLEET) || BINARY + 0 >= 10L || !defined(TRUE)
 			assert(false, msg.."22")
 		#else
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#endif
 
 
@@ -1710,7 +1710,7 @@ function lcpp.test(suppressMsg)
 		#elif defined(NOTDEFINED)
 			assert(false, msg.."2")
 		#elif defined(TRUE)
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."3")
 		#endif
@@ -1722,7 +1722,7 @@ function lcpp.test(suppressMsg)
 		#else if defined(NOTDEFINED)
 			assert(false, msg.."2")
 		#else if defined(TRUE)
-			lcpp_test.assertTrue()
+			preprocessor_test.assertTrue()
 		#else
 			assert(false, msg.."3")
 		#endif
@@ -1733,7 +1733,7 @@ function lcpp.test(suppressMsg)
 			#ifdef NOTDEFINED
 				assert(false, msg.."1")
 			#elif defined(TRUE)
-				lcpp_test.assertTrue()
+				preprocessor_test.assertTrue()
 			#else
 				assert(false, msg.."2")
 			#endif
@@ -1776,7 +1776,7 @@ function lcpp.test(suppressMsg)
 		assert(STRINGIFY_AND_CONCAT(fgh, ij) == "fghij", msg)
 
 		#define msg_concat(msg1, msg2) msg1 ## msg2
-		assert("I, am, lcpp" == msg_concat("I, am", ", lcpp"), "processing macro argument which includes ,")
+		assert("I, am, preprocessor" == msg_concat("I, am", ", preprocessor"), "processing macro argument which includes ,")
 
 		#define FUNC__ARG 500
 		#define __ARG 100
@@ -1875,69 +1875,69 @@ function lcpp.test(suppressMsg)
 			assert(false, msg .. " unary ~ not work")
 		#endif
 	]]
-	lcpp.FAST = false	-- enable full valid output for testing
-	lcpp.SELF_TEST = true
-	local testlua = lcpp.compile(testlcpp)
-	lcpp.SELF_TEST = nil
+	preprocessor.FAST = false	-- enable full valid output for testing
+	preprocessor.SELF_TEST = true
+	local testlua = preprocessor.compile(testpreprocessor)
+	preprocessor.SELF_TEST = nil
 	-- 	print(testlua)
 	assert(loadstring(testlua, "testlua"))()
-	lcpp_test.assertTrueCalls = findn(testlcpp, "lcpp_test.assertTrue()")
-	assert(lcpp_test.assertTrueCount == lcpp_test.assertTrueCalls, "assertTrue calls:"..lcpp_test.assertTrueCalls.." count:"..lcpp_test.assertTrueCount)
-	_G.lcpp_test = nil	-- delete ugly global hack
+	preprocessor_test.assertTrueCalls = findn(testpreprocessor, "preprocessor_test.assertTrue()")
+	assert(preprocessor_test.assertTrueCount == preprocessor_test.assertTrueCalls, "assertTrue calls:"..preprocessor_test.assertTrueCalls.." count:"..preprocessor_test.assertTrueCount)
+	_G.preprocessor_test = nil	-- delete ugly global hack
 	if not suppressMsg then print("Test run suscessully") end
 end
-if lcpp.LCPP_TEST then lcpp.test(true) end
+if preprocessor.LCPP_TEST then preprocessor.test(true) end
 
 
 -- ------------
 -- REGISTER LCPP
 -- ------------
 
---- disable lcpp processing for ffi, loadstring and such
-lcpp.disable = function()
-	if lcpp.LCPP_LUA then
+--- disable preprocessor processing for ffi, loadstring and such
+preprocessor.disable = function()
+	if preprocessor.LCPP_LUA then
 		-- activate LCPP_LUA actually does anything useful
-		-- _G.loadstring = _G.loadstring_lcpp_backup
+		-- _G.loadstring = _G.loadstring_preprocessor_backup
 	end	
 	
-	if lcpp.LCPP_FFI and pcall(require, "ffi") then
+	if preprocessor.LCPP_FFI and pcall(require, "ffi") then
 		ffi = require("ffi")
-		if ffi.lcpp_cdef_backup then
-			ffi.cdef = ffi.lcpp_cdef_backup
-			ffi.lcpp_cdef_backup = nil
+		if ffi.preprocessor_cdef_backup then
+			ffi.cdef = ffi.preprocessor_cdef_backup
+			ffi.preprocessor_cdef_backup = nil
 		end
 	end
 end
 
---- (re)enable lcpp processing for ffi, loadstring and such
-lcpp.enable = function()
+--- (re)enable preprocessor processing for ffi, loadstring and such
+preprocessor.enable = function()
 	-- Use LCPP to process Lua code (load, loadfile, loadstring...)
-	if lcpp.LCPP_LUA then
+	if preprocessor.LCPP_LUA then
 		-- TODO: make it properly work on all functions
-		error("lcpp.LCPP_LUA = true -- not properly implemented yet");
-		_G.loadstring_lcpp_backup = _G.loadstring
+		error("preprocessor.LCPP_LUA = true -- not properly implemented yet");
+		_G.loadstring_preprocessor_backup = _G.loadstring
 		_G.loadstring = function(str, chunk) 
-			return loadstring_lcpp_backup(lcpp.compile(str), chunk) 
+			return loadstring_preprocessor_backup(preprocessor.compile(str), chunk) 
 		end
 	end
 	-- Use LCPP as LuaJIT PreProcessor if used inside LuaJIT. i.e. Hook ffi.cdef
-	if lcpp.LCPP_FFI and pcall(require, "ffi") then
+	if preprocessor.LCPP_FFI and pcall(require, "ffi") then
 		ffi = require("ffi")
-		if not ffi.lcpp_cdef_backup then
-			if not ffi.lcpp_defs then ffi.lcpp_defs = {} end -- defs are stored and reused
-			ffi.lcpp = function(input) 
-				local output, state = lcpp.compile(input, ffi.lcpp_defs, ffi.lcpp_macro_sources)
-				ffi.lcpp_defs = state.defines
-				ffi.lcpp_macro_sources = state.macro_sources
+		if not ffi.preprocessor_cdef_backup then
+			if not ffi.preprocessor_defs then ffi.preprocessor_defs = {} end -- defs are stored and reused
+			ffi.preprocessor = function(input) 
+				local output, state = preprocessor.compile(input, ffi.preprocessor_defs, ffi.preprocessor_macro_sources)
+				ffi.preprocessor_defs = state.defines
+				ffi.preprocessor_macro_sources = state.macro_sources
 				return output	
 			end
-			ffi.lcpp_cdef_backup = ffi.cdef
+			ffi.preprocessor_cdef_backup = ffi.cdef
 			ffi.cdef = function(input) 
 				if true then
-					return ffi.lcpp_cdef_backup(ffi.lcpp(input)) 
+					return ffi.preprocessor_cdef_backup(ffi.preprocessor(input)) 
 				else
 					local fn,cnt = input:gsub('#include ["<].-([^/]+%.h)[">]', '%1')
-					input = ffi.lcpp(input)
+					input = ffi.preprocessor(input)
 					if cnt > 0 then
 						local f = io.open("./tmp/"..fn, 'w')
 						if f then
@@ -1947,13 +1947,13 @@ lcpp.enable = function()
 							assert(fn:find('/'), 'cannot open: ./tmp/'..fn)
 						end
 					end
-					return ffi.lcpp_cdef_backup(input) 
+					return ffi.preprocessor_cdef_backup(input) 
 				end
 			end
 		end
 	end
 end
 
-lcpp.enable()
-return lcpp
+preprocessor.enable()
+return preprocessor
 

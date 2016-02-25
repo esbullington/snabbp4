@@ -1,4 +1,4 @@
-local class      = require("snabbp4.syntax.middleclass")
+local class      = require("snabbp4.syntax.utils.middleclass")
 -- base symbol
 local base       = require("snabbp4.syntax.symbols.base")
 local BaseSymbol = base.BaseSymbol
